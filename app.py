@@ -1,12 +1,13 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import joblib
 
 # 1. Load the model and scaler
 # These files must be in the same GitHub folder!
 
 model = joblib.load('model.joblib')
-oe = joblib.load('ordeanal.joblib')
+oe = joblib.load('ordinal.joblib')
 scaler = joblib.load('scaler.joblib')
 
 st.title("Student Depression Analysis")
@@ -109,26 +110,43 @@ FamilyHistory = st.selectbox(
 )
 
 if st.button("Click here to get the Prediction"):
-    # 3. Create feature list (Ensure order matches your training data!)
-    cat_col=[Gender,DietaryHabits,Degree,SuicidalThoughts,FamilyHistory]
-    num_col=[Age,AcademicPressure,WorkPressure,CGPA,StudySatisfaction,JobSatisfaction,SleepDuration,WorkStudyHours,FinancialStress]
-    
-    
-    # 4. Scale and Predict
-    scaled_features=[]
-    num_col = scaler.transform(np.array(num_col).reshape(1,-1))[0]
-    scaled_features.extend(num_col)
-    for i in cat_col:
-        if i in oe.classes_:
-            encoded= oe.transform([i])[0]
-        else:
-            encoded = 0
-        scaled_features.append(encoded)
-                           
-    arr = np.array(scaled_features).reshape(1,12)
-    prediction = model.predict(arr)
-    
+
+    # Categorical columns
+    cat_col = [
+        Gender,
+        DietaryHabits,
+        Degree,
+        SuicidalThoughts,
+        FamilyHistory
+    ]
+
+    # Numerical columns
+    num_col = [
+        Age,
+        AcademicPressure,
+        WorkPressure,
+        CGPA,
+        StudySatisfaction,
+        JobSatisfaction,
+        SleepDuration,
+        WorkStudyHours,
+        FinancialStress
+    ]
+
+    # Scale numerical features
+    scaled_num = scaler.transform([num_col])
+
+    # Encode categorical features
+    encoded_cat = oe.transform([cat_col])
+
+    # Combine both numerical + categorical
+    final_features = np.concatenate((scaled_num, encoded_cat), axis=1)
+
+    # Prediction
+    prediction = model.predict(final_features)
+
+    # Result
     if prediction[0] == 1:
-         st.error("Student may have Depression")
+        st.error("Student may have Depression")
     else:
         st.success("Student may not have Depression")
